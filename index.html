@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition Research Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            color: #666;
+        }
+
+        .stats span {
+            background: #f0f0f0;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+
+        .upload-area:hover {
+            background: #f8f9ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area i {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .upload-area p {
+            color: #666;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            width: 100%;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result pre {
+            background: #1e1e2f;
+            color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            margin: 10px auto;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        .tab-container {
+            margin-bottom: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: white;
+            border-radius: 25px;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            opacity: 1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .model-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #e0e7ff;
+            color: #4338ca;
+            border-radius: 15px;
+            font-size: 12px;
+            margin: 2px;
+        }
+
+        .file-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .success {
+            color: #10b981;
+        }
+
+        .error {
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧬 Face Recognition Research Interface</h1>
+            <div class="stats" id="stats">
+                <span>Loading models: <span id="model-count">0</span></span>
+                <span>Faces in DB: <span id="db-count">0</span></span>
+            </div>
+        </header>
+
+        <div class="tab-container">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('single')">🔍 Single Analysis</div>
+                <div class="tab" onclick="switchTab('compare')">⚖️ Compare Faces</div>
+                <div class="tab" onclick="switchTab('batch')">📊 Batch Pattern Analysis</div>
+                <div class="tab" onclick="switchTab('database')">🗄️ Database</div>
+            </div>
+        </div>
+
+        <!-- Single Analysis Tab -->
+        <div id="single-tab" class="tab-content">
+            <div class="grid">
+                <div class="card">
+                    <h2>🔍 Upload Face for Analysis</h2>
+                    <div class="upload-area" onclick="document.getElementById('single-file').click()">
+                        <i>📸</i>
+                        <p>Click to upload or drag and drop</p>
+                        <p style="font-size: 12px; color: #999;">JPG, PNG, JPEG (Max 16MB)</p>
+                    </div>
+                    <input type="file" id="single-file" class="file-input" accept="image/*" onchange="previewSingleImage(this)">
+
+                    <div class="image-preview" id="single-preview">
+                        <img id="single-preview-img" src="" alt="Preview">
+                    </div>
+
+                    <div class="file-list" id="single-file-info" style="display: none;">
+                        <div class="file-item">
+                            <span id="single-filename"></span>
+                            <span id="single-filesize"></span>
+                        </div>
+                    </div>
+
+                    <button class="btn" onclick="analyzeSingle()" id="single-btn" disabled>🔬 Analyze Face</button>
+
+                    <div class="loading" id="single-loading">
+                        <div class="loading-spinner"></div>
+                        <p>Analyzing with all models...</p>
+                    </div>
+
+                    <div class="result" id="single-result">
+                        <h3>Analysis Results</h3>
+                        <div id="single-result-content"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>📊 Model Performance</h2>
+                    <div id="model-list">
+                        <p>Loading models...</p>
+                    </div>
+
+                    <h3 style="margin-top: 20px;">📈 Recent Analysis</h3>
+                    <div id="recent-analyses">
+                        <p>No analyses yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Compare Tab -->
+        <div id="compare-tab" class="tab-content" style="display: none;">
+            <div class="grid">
+                <div class="card">
+                    <h2>⚖️ Compare Two Faces</h2>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <!-- Face 1 -->
+                        <div>
+                            <h3>Face 1</h3>
+                            <div class="upload-area" onclick="document.getElementById('compare-file1').click()">
+                                <i>👤</i>
+                                <p>Upload first face</p>
+                            </div>
+                            <input type="file" id="compare-file1" class="file-input" accept="image/*" onchange="previewCompare1(this)">
+                            <div class="image-preview" id="compare1-preview">
+                                <img id="compare1-img" src="" alt="Preview 1">
+                            </div>
+                        </div>
+
+                        <!-- Face 2 -->
+                        <div>
+                            <h3>Face 2</h3>
+                            <div class="upload-area" onclick="document.getElementById('compare-file2').click()">
+                                <i>👤</i>
+                                <p>Upload second face</p>
+                            </div>
+                            <input type="file" id="compare-file2" class="file-input" accept="image/*" onchange="previewCompare2(this)">
+                            <div class="image-preview" id="compare2-preview">
+                                <img id="compare2-img" src="" alt="Preview 2">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn" onclick="compareFaces()" id="compare-btn" style="margin-top: 20px;" disabled>🔄 Compare Faces</button>
+
+                    <div class="loading" id="compare-loading">
+                        <div class="loading-spinner"></div>
+                        <p>Comparing across all models...</p>
+                    </div>
+
+                    <div class="result" id="compare-result">
+                        <h3>Comparison Results</h3>
+                        <div id="compare-result-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Batch Analysis Tab -->
+        <div id="batch-tab" class="tab-content" style="display: none;">
+            <div class="grid">
+                <div class="card">
+                    <h2>📊 Batch Pattern Analysis</h2>
+                    <p>Upload multiple faces to find patterns and clusters</p>
+
+                    <div class="upload-area" onclick="document.getElementById('batch-files').click()">
+                        <i>📚</i>
+                        <p>Click to upload multiple images</p>
+                        <p style="font-size: 12px; color: #999;">Select 2+ images for pattern analysis</p>
+                    </div>
+                    <input type="file" id="batch-files" class="file-input" accept="image/*" multiple onchange="updateBatchList(this)">
+
+                    <div class="file-list" id="batch-file-list"></div>
+
+                    <button class="btn" onclick="batchAnalyze()" id="batch-btn" disabled>🔬 Analyze Patterns</button>
+
+                    <div class="loading" id="batch-loading">
+                        <div class="loading-spinner"></div>
+                        <p>Analyzing patterns across all images...</p>
+                    </div>
+
+                    <div class="result" id="batch-result">
+                        <h3>Pattern Analysis Results</h3>
+                        <div id="batch-result-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database Tab -->
+        <div id="database-tab" class="tab-content" style="display: none;">
+            <div class="grid">
+                <div class="card">
+                    <h2>🗄️ Face Database</h2>
+                    <div style="margin-bottom: 15px;">
+                        <button class="btn" onclick="refreshDatabase()" style="width: auto; padding: 8px 20px;">🔄 Refresh</button>
+                        <button class="btn" onclick="clearDatabase()" style="width: auto; padding: 8px 20px; background: #ef4444;">🗑️ Clear All</button>
+                    </div>
+
+                    <div id="database-content">
+                        <p>Loading database...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentModels = [];
+        let currentTab = 'single';
+
+        // Initialize
+        fetchHealth();
+        fetchModelInfo();
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+
+            document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById(`${tab}-tab`).style.display = 'block';
+
+            if (tab === 'database') {
+                refreshDatabase();
+            }
+        }
+
+        function fetchHealth() {
+            fetch('/health')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('model-count').textContent = data.models_loaded;
+                    document.getElementById('db-count').textContent = data.faces_in_db;
+                    currentModels = data.models;
+
+                    let modelHtml = '<h3>Loaded Models:</h3>';
+                    data.models.forEach(model => {
+                        modelHtml += `<span class="model-badge">${model}</span> `;
+                    });
+                    document.getElementById('model-list').innerHTML = modelHtml;
+                });
+        }
+
+        function fetchModelInfo() {
+            fetch('/model_info')
+                .then(res => res.json())
+                .then(data => {
+                    console.log('Models:', data);
+                });
+        }
+
+        // Single Analysis Functions
+        function previewSingleImage(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    document.getElementById('single-preview-img').src = e.target.result;
+                    document.getElementById('single-preview').style.display = 'block';
+                    document.getElementById('single-file-info').style.display = 'block';
+                    document.getElementById('single-filename').textContent = file.name;
+                    document.getElementById('single-filesize').textContent = (file.size / 1024).toFixed(2) + ' KB';
+                    document.getElementById('single-btn').disabled = false;
+                };
+
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function analyzeSingle() {
+            const fileInput = document.getElementById('single-file');
+            if (!fileInput.files[0]) return;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            document.getElementById('single-loading').style.display = 'block';
+            document.getElementById('single-result').style.display = 'none';
+
+            fetch('/analyze', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('single-loading').style.display = 'none';
+                document.getElementById('single-result').style.display = 'block';
+                document.getElementById('single-result-content').innerHTML =
+                    `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                fetchHealth(); // Update stats
+            })
+            .catch(error => {
+                document.getElementById('single-loading').style.display = 'none';
+                document.getElementById('single-result').style.display = 'block';
+                document.getElementById('single-result-content').innerHTML =
+                    `<pre class="error">Error: ${error}</pre>`;
+            });
+        }
+
+        // Compare Functions
+        function previewCompare1(input) {
+            if (input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('compare1-img').src = e.target.result;
+                    document.getElementById('compare1-preview').style.display = 'block';
+                    checkCompareButton();
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function previewCompare2(input) {
+            if (input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('compare2-img').src = e.target.result;
+                    document.getElementById('compare2-preview').style.display = 'block';
+                    checkCompareButton();
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function checkCompareButton() {
+            const file1 = document.getElementById('compare-file1').files[0];
+            const file2 = document.getElementById('compare-file2').files[0];
+            document.getElementById('compare-btn').disabled = !(file1 && file2);
+        }
+
+        function compareFaces() {
+            const file1 = document.getElementById('compare-file1').files[0];
+            const file2 = document.getElementById('compare-file2').files[0];
+
+            const formData = new FormData();
+            formData.append('file1', file1);
+            formData.append('file2', file2);
+
+            document.getElementById('compare-loading').style.display = 'block';
+            document.getElementById('compare-result').style.display = 'none';
+
+            fetch('/compare', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('compare-loading').style.display = 'none';
+                document.getElementById('compare-result').style.display = 'block';
+                document.getElementById('compare-result-content').innerHTML =
+                    `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            })
+            .catch(error => {
+                document.getElementById('compare-loading').style.display = 'none';
+                document.getElementById('compare-result').style.display = 'block';
+                document.getElementById('compare-result-content').innerHTML =
+                    `<pre class="error">Error: ${error}</pre>`;
+            });
+        }
+
+        // Batch Functions
+        function updateBatchList(input) {
+            const files = Array.from(input.files);
+            const list = document.getElementById('batch-file-list');
+
+            list.innerHTML = '';
+            files.forEach(file => {
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.innerHTML = `<span>${file.name}</span><span>${(file.size/1024).toFixed(2)} KB</span>`;
+                list.appendChild(div);
+            });
+
+            document.getElementById('batch-btn').disabled = files.length < 2;
+        }
+
+        function batchAnalyze() {
+            const files = document.getElementById('batch-files').files;
+            const formData = new FormData();
+
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files[]', files[i]);
+            }
+
+            document.getElementById('batch-loading').style.display = 'block';
+            document.getElementById('batch-result').style.display = 'none';
+
+            fetch('/batch', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('batch-loading').style.display = 'none';
+                document.getElementById('batch-result').style.display = 'block';
+                document.getElementById('batch-result-content').innerHTML =
+                    `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            })
+            .catch(error => {
+                document.getElementById('batch-loading').style.display = 'none';
+                document.getElementById('batch-result').style.display = 'block';
+                document.getElementById('batch-result-content').innerHTML =
+                    `<pre class="error">Error: ${error}</pre>`;
+            });
+        }
+
+        // Database Functions
+        function refreshDatabase() {
+            fetch('/database')
+                .then(res => res.json())
+                .then(data => {
+                    let html = `<p><strong>Total Faces:</strong> ${data.total_faces}</p>`;
+
+                    if (data.faces && data.faces.length > 0) {
+                        html += '<table style="width: 100%; margin-top: 15px;">';
+                        html += '<tr><th>Label</th><th>Timestamp</th><th>Shape</th></tr>';
+
+                        data.faces.forEach(face => {
+                            html += `<tr>
+                                <td>${face.label}</td>
+                                <td>${face.timestamp}</td>
+                                <td>${face.image_shape}</td>
+                            </tr>`;
+                        });
+
+                        html += '</table>';
+                    } else {
+                        html += '<p>No faces in database</p>';
+                    }
+
+                    document.getElementById('database-content').innerHTML = html;
+                    fetchHealth(); // Update stats
+                });
+        }
+
+        function clearDatabase() {
+            if (confirm('Are you sure you want to clear the entire database?')) {
+                fetch('/clear_database', { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            refreshDatabase();
+                        }
+                    });
+            }
+        }
+
+        // Auto-refresh health every 30 seconds
+        setInterval(fetchHealth, 30000);
+    </script>
+</body>
+</html>
